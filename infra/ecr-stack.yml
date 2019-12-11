@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: container on ecs cluster
+
+Parameters:
+    RepoName:
+        Description: Enter the ECR Repository Name
+        Type: String
+        Value: container-docker-store
+
+Resources:
+    MyRepository:
+        Type: AWS::ECR::Repository
+        Properties:
+          RepositoryName: !Ref RepoName
+      
+Outputs:
+    ECRRepository:
+        Description: ECR Repository
+        Value: !GetAtt MyRepository.Arn
+        Export:
+            Name: 'ECRRepository'
+    ECRRepositoryName:
+        Description: ECR Repository
+        Value: !Ref MyRepository
+        Export:
+            Name: 'ECRRepositoryName'

@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'Route53 hosted zone, record set.'
+
+Parameters:
+  HostName:
+    Description: Host name for the Domain
+    Type: String
+    ConstraintDescription: Please enter your domain name.
+    
+Resources:
+  BrighteHostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      HostedZoneConfig:
+        Comment: 'My hosted zone'
+      Name: !Ref HostName
+
+  BrighteRecordSet:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      AliasTarget:
+        HostedZoneId: !ImportValue CanonicalHostedZoneID
+        DNSName: !ImportValue 'DomainName'
+      Name: !Join ['', [!Ref 'HostName','.']]
+      Type: A
+      HostedZoneId: !Ref BrighteHostedZone
+
+  BrighteRecordSet1:
+    Type: 'AWS::Route53::RecordSet'
+    DependsOn:
+        - BrighteRecordSet
+    Properties:
+      AliasTarget:
+        HostedZoneId:  !Ref BrighteHostedZone
+        DNSName: !Join ['', [!Ref HostName, '.']]
+      Name: !Join ['', ['www.', !Ref HostName, '.']]
+      Type: A
+      HostedZoneId: !Ref BrighteHostedZone
+
+Outputs:
+  BrighteZone:
+    Value: !Ref BrighteHostedZone
+    Export:
+      Name: BrighteHostedZone
+  HostName:
+    Value: !Ref HostName
+    Export:
+      Name: HostName

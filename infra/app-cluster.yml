@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: container cluster on ECS, loadbalancer, security groups and cloudwatch
+
+Parameters:
+    LoadBalancerCertificateArn:
+        Description: 'Optional Amazon Resource Name (ARN) of the certificate to associate with the load balancer.'
+        Type: String
+        Default: ''
+
+Resources:
+  
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: 'containerstore'
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: ecs-services
+      Subnets:
+        - !ImportValue 'Subnet3'
+        - !ImportValue 'Subnet4'
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DefaultTargetGroup
+  
+  # LoadBalancerListener:
+    # Type: AWS::ElasticLoadBalancingV2::Listener
+    # Properties:
+      # LoadBalancerArn: !Ref LoadBalancer
+      # Protocol: HTTPS
+      # Port: 443
+      # Certificates:
+        # - CertificateArn: !Ref LoadBalancerCertificateArn
+      # DefaultActions:
+        # - Type: forward
+          # TargetGroupArn: !Ref DefaultTargetGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for loadbalancer to services on ECS
+      VpcId: !ImportValue 'VPC'
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+  
+  # LoadBalancerSecurityGroup:
+    # Type: AWS::EC2::SecurityGroup
+    # Properties:
+      # GroupDescription: Security group for loadbalancer to services on ECS
+      # VpcId: !ImportValue 'VPC'
+      # SecurityGroupIngress:
+        # - CidrIp: 0.0.0.0/0
+          # FromPort: 443
+          # ToPort: 443
+          # IpProtocol: tcp
+  
+  DefaultTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: default
+      VpcId: !ImportValue 'VPC'
+      Protocol: 'HTTP'
+      Port: '80'  
+
+  CloudWatchLogsEmployeeGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: 'employee'
+      RetentionInDays: 1
+  
+  CloudWatchLogsDepartmentGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: 'department'
+      RetentionInDays: 1
+
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup      
+    Properties:
+     VpcId: !ImportValue 'VPC'
+     GroupDescription: for ecs containers
+     SecurityGroupIngress:
+       - SourceSecurityGroupId: !Ref 'EC2SecurityGroup'
+         IpProtocol: -1
+       - SourceSecurityGroupId: !Ref 'LoadBalancerSecurityGroup'
+         IpProtocol: -1
+  
+  EC2SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+        GroupDescription: Security Group
+        SecurityGroupIngress:
+            - CidrIp: 0.0.0.0/0
+              FromPort: 80
+              ToPort: 80
+              IpProtocol: -1
+            - CidrIp: 0.0.0.0/0
+              FromPort: 22
+              ToPort: 22
+              IpProtocol: -1
+        VpcId: !ImportValue VPC                  
+
+Outputs:
+
+  EC2SecurityGroup:
+        Description: Return Security Group Id
+        Value: !Ref EC2SecurityGroup
+        Export:
+            Name: EC2SecurityGroup
+            
+  Cluster:
+    Value: !Ref ECSCluster
+    Export:
+      Name: 'ECSCluster'
+
+  Listener:
+    Description: listener port 80/443
+    Value: !Ref LoadBalancerListener
+    Export:
+      Name: 'Listener'
+
+  ContainerSecurityGroup:
+    Description: container security group
+    Value: !Ref ContainerSecurityGroup
+    Export:
+      Name: 'ContainerSecurityGroup'
+
+  LoadBalancerDNS:
+    Description: Domain name for the loadbalancer
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: 'DomainName'
+  
+  LoadBalanceranonicalHostedZoneID:
+    Description: Canonical HostedZone ID for the loadbalancer
+    Value: !GetAtt LoadBalancer.CanonicalHostedZoneID
+    Export:
+      Name: 'CanonicalHostedZoneID'
+  
+  LoadBalancerSecurityGroup:
+    Description: Load Balancer Security Group
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+        Name: LoadBalancerSecurityGroup
